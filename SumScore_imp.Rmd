@@ -1,0 +1,163 @@
+---
+title: "SumScore_imp"
+author: "Haotian Zheng"
+date: "2024-07-23"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(mice)
+library(dplyr)
+library(ggplot2)
+library(micemd)
+library(countimp)
+library(miceRanger)
+library(remote)
+```
+
+
+
+generate data
+```{r}
+n = 10000
+M = 5
+x1 = rnorm(n, mean = 4, sd = 5)
+x2 = sample(0: 7, n, replace = T)
+x3 = runif(n, min = 1, max = 3)
+z1 = exp(rnorm(n, mean = log(sqrt(3.2)), sd = log(sqrt(5/4))))
+z2 = rpois(n, 2)
+z3 = rgamma(n, 3, 2)
+x_sum = x1 + x2 + x3
+y = rnorm(n, mean = 0.5 + x1 + x2 + x3 + 7 * z1 + 3 * z2 + 11 * z3, sd = sqrt(30))
+data_raw = data.frame(y = y, x1 = x1, x2 = x2, x3 = x3, z1 = z1, z2 = z2, z3= z3, x_sum = x_sum)
+```
+
+missing values
+```{r}
+introduce_missingness = function(data, mechanism, X, prob) {
+  if (mechanism == "MCAR") {
+    data[sample(1:nrow(data), size = round(nrow(data) * (1 - prob))), X] = NA
+  } else if (mechanism == "MAR") {
+    
+    # in MAR, observation is based on complete cases
+    objective_function = function(a, data, prob) {
+      prob_try = plogis(a - 1 / sd(data$y) * data$y)
+      mean_prob = mean(prob_try, na.rm = TRUE)
+      return(abs(mean_prob - prob))  # to make the mean prob close to the target prob
+    }
+    # find the a
+    optimized_a = optimize(objective_function, interval = c(-5, 5), data = data, prob = prob)$minimum
+    # calculate new prob with new a
+    prob = plogis(optimized_a - 1 / sd(data$y) * data$y)
+    
+    data[runif(nrow(data)) > prob, X] = NA
+  }
+  return(data)
+}
+```
+
+MAR missing type
+```{r}
+data = introduce_missingness(data_raw, "MAR", "x1", 0.3)
+data = introduce_missingness(data, "MAR", "x2", 0.7)
+data = introduce_missingness(data, "MAR", "x3", 0.995)
+data = introduce_missingness(data, "MAR", "z1", 0.9)
+data$x_sum = data$x1 + data$x2 + data$x3
+```
+
+imputation
+```{r}
+ini = mice(data, max = 0, print = FALSE)
+meth = ini$meth
+meth["x1"] = "rf"
+meth["x_sum"] = "~I(x1 + x2 + x3)"
+meth["x2"] = "pmm"
+meth["x3"] = "midastouch" # when dataset is very large, "midastouch" will be very slow
+pred = ini$pred
+pred["x_sum", ] = 0
+pred[c("x1", "x2", "x3"), "x_sum"] = 0
+pred[c("x1", "x2", "x3"), c("z1", "z2", "z3")] = 0
+pred[c("z1", "z2", "z3"), c("x1", "x2", "x3")] = 0
+post = make.post(data)
+post["x1"] = "imp[[j]][, i] = squeeze(imp[[j]][, i], c(-18, 18))"
+post["x2"] = "imp[[j]][, i] = squeeze(imp[[j]][, i], c(0, 7))"
+post["x3"] = "imp[[j]][, i] = squeeze(imp[[j]][, i], c(1, 3))"
+post["x_sum"] = "ifdo(c(x_sum < -17, x_sum > 52), c(-17, 52))"
+imp.sum = mice(data, pred = pred, meth = meth, post = post, maxit = 20, M = M, seed = 1018)
+```
+
+regression
+```{r}
+beta_true = summary(lm(y ~ x_sum + z1 + z2 + z3, data = data_raw))$coefficients[, "Estimate"]
+
+beta_imp = c()
+for (i in 1: M) {
+  df_imp = complete(imp.sum, i)
+  beta_imp = rbind(beta_imp,
+    summary(lm(y ~ x_sum + z1 + z2 + z3, data = df_imp))$coefficients[, "Estimate"])
+}
+print(colMeans(beta_imp))
+print(beta_true)
+```
+
+diagnostics
+```{r}
+plot(imp.sum)
+densityplot(imp.sum)
+```
+
+
+
+MCAR missing type
+```{r}
+data = introduce_missingness(data_raw, "MCAR", "x1", 0.3)
+data = introduce_missingness(data, "MCAR", "x2", 0.7)
+data = introduce_missingness(data, "MCAR", "x3", 0.995)
+data = introduce_missingness(data, "MCAR", "z1", 0.9)
+data$x_sum = data$x1 + data$x2 + data$x3
+```
+
+imputation
+```{r}
+ini = mice(data, max = 0, print = FALSE)
+meth = ini$meth
+meth["x1"] = "rf"
+meth["x_sum"] = "~I(x1 + x2 + x3)"
+meth["x2"] = "pmm"
+meth["x3"] = "midastouch" # when dataset is very large, "midastouch" will be very slow
+pred = ini$pred
+pred["x_sum", ] = 0
+pred[c("x1", "x2", "x3"), "x_sum"] = 0
+pred[c("x1", "x2", "x3"), c("z1", "z2", "z3")] = 0
+pred[c("z1", "z2", "z3"), c("x1", "x2", "x3")] = 0
+post = make.post(data)
+post["x1"] = "imp[[j]][, i] = squeeze(imp[[j]][, i], c(-18, 18))"
+post["x2"] = "imp[[j]][, i] = squeeze(imp[[j]][, i], c(0, 7))"
+post["x3"] = "imp[[j]][, i] = squeeze(imp[[j]][, i], c(1, 3))"
+post["x_sum"] = "ifdo(c(x_sum < -17, x_sum > 52), c(-17, 52))"
+imp.sum = mice(data, pred = pred, meth = meth, post = post, maxit = 20, M = M, seed = 1018)
+```
+
+regression
+```{r}
+beta_true = summary(lm(y ~ x_sum + z1 + z2 + z3, data = data_raw))$coefficients[, "Estimate"]
+
+beta_imp = c()
+for (i in 1: M) {
+  df_imp = complete(imp.sum, i)
+  beta_imp = rbind(beta_imp,
+    summary(lm(y ~ x_sum + z1 + z2 + z3, data = df_imp))$coefficients[, "Estimate"])
+}
+print(colMeans(beta_imp))
+print(beta_true)
+```
+
+diagnostics
+```{r}
+plot(imp.sum)
+densityplot(imp.sum)
+```
+
+
+
