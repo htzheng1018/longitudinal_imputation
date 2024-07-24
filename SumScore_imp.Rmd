@@ -33,6 +33,8 @@ y = rnorm(n, mean = 0.5 + x1 + x2 + x3 + 7 * z1 + 3 * z2 + 11 * z3, sd = sqrt(30
 data_raw = data.frame(y = y, x1 = x1, x2 = x2, x3 = x3, z1 = z1, z2 = z2, z3= z3, x_sum = x_sum)
 ```
 
+
+
 missing values
 ```{r}
 introduce_missingness = function(data, mechanism, X, prob) {
@@ -57,6 +59,8 @@ introduce_missingness = function(data, mechanism, X, prob) {
 }
 ```
 
+
+
 MAR missing type
 ```{r}
 data = introduce_missingness(data_raw, "MAR", "x1", 0.3)
@@ -65,6 +69,8 @@ data = introduce_missingness(data, "MAR", "x3", 0.995)
 data = introduce_missingness(data, "MAR", "z1", 0.9)
 data$x_sum = data$x1 + data$x2 + data$x3
 ```
+
+
 
 imputation
 ```{r}
@@ -87,6 +93,8 @@ post["x_sum"] = "ifdo(c(x_sum < -17, x_sum > 52), c(-17, 52))"
 imp.sum = mice(data, pred = pred, meth = meth, post = post, maxit = 20, M = M, seed = 1018)
 ```
 
+
+
 regression
 ```{r}
 beta_true = summary(lm(y ~ x_sum + z1 + z2 + z3, data = data_raw))$coefficients[, "Estimate"]
@@ -100,6 +108,8 @@ for (i in 1: M) {
 print(colMeans(beta_imp))
 print(beta_true)
 ```
+
+
 
 diagnostics
 ```{r}
@@ -118,6 +128,8 @@ data = introduce_missingness(data, "MCAR", "z1", 0.9)
 data$x_sum = data$x1 + data$x2 + data$x3
 ```
 
+
+
 imputation
 ```{r}
 ini = mice(data, max = 0, print = FALSE)
@@ -139,6 +151,8 @@ post["x_sum"] = "ifdo(c(x_sum < -17, x_sum > 52), c(-17, 52))"
 imp.sum = mice(data, pred = pred, meth = meth, post = post, maxit = 20, M = M, seed = 1018)
 ```
 
+
+
 regression
 ```{r}
 beta_true = summary(lm(y ~ x_sum + z1 + z2 + z3, data = data_raw))$coefficients[, "Estimate"]
@@ -152,6 +166,8 @@ for (i in 1: M) {
 print(colMeans(beta_imp))
 print(beta_true)
 ```
+
+
 
 diagnostics
 ```{r}

@@ -1,0 +1,172 @@
+---
+title: "Longitudinal_imp"
+author: "Haotian Zheng"
+date: "2024-07-24"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(mice)
+library(dplyr)
+library(ggplot2)
+library(micemd)
+library(miceadds)
+library(miceRanger)
+library(remote)
+library(pan)
+```
+
+
+
+generate data
+```{r}
+observation_num = 500
+all_years = 2008: 2024
+data_raw = data.frame()
+
+for (i in 1: observation_num) {
+  num_years = sample(1:length(all_years), 1)
+  year = sample(all_years, num_years)
+  
+  data_tmp = data.frame(
+    id = i,
+    year = year
+  )
+  
+  data_raw = rbind(data_raw, data_tmp)
+}
+data_raw = data_raw %>% arrange(id, year)
+
+n = nrow(data_raw)
+
+data_raw$x1 = rnorm(n, mean = 4, sd = 5) + data_raw$year - 2007
+data_raw$x2 = mapply(function(year) {
+  sample(0: round((year - 2008) / 3), 1)
+}, data_raw$year)
+data_raw$x3 = mapply(function(year) {
+  runif(1, min = (year - 2013) / 16, max = (year - 2000) / 16)
+}, data_raw$year)
+
+data_raw$z1 = exp(rnorm(n, mean = log(sqrt(3.2)), sd = log(sqrt(5/4))))
+data_raw$z2 = rpois(n, 2)
+data_raw$z3 = rgamma(n, 3, 2)
+
+data_raw$y = rnorm(n, mean = 0.5 + data_raw$x1 + data_raw$x2 + data_raw$x3 +
+            7 * data_raw$z1 + 3 * data_raw$z2 + 11 * data_raw$z3, sd = sqrt(30))
+```
+
+
+
+missing values
+```{r}
+introduce_missingness = function(data, mechanism, X, prob) {
+  if (mechanism == "MCAR") {
+    data[sample(1:nrow(data), size = round(nrow(data) * (1 - prob))), X] = NA
+  } else if (mechanism == "MAR") {
+    
+    # in MAR, observation is based on complete cases
+    objective_function = function(a, data, prob) {
+      prob_try = plogis(a - 1 / sd(data$y) * data$y)
+      mean_prob = mean(prob_try, na.rm = TRUE)
+      return(abs(mean_prob - prob))  # to make the mean prob close to the target prob
+    }
+    # find the a
+    optimized_a = optimize(objective_function, interval = c(-5, 5), data = data, prob = prob)$minimum
+    # calculate new prob with new a
+    prob = plogis(optimized_a - 1 / sd(data$y) * data$y)
+    
+    data[runif(nrow(data)) > prob, X] = NA
+  }
+  return(data)
+}
+
+data = introduce_missingness(data_raw, "MAR", "x1", 0.3)
+data = introduce_missingness(data, "MAR", "x2", 0.7)
+data = introduce_missingness(data, "MAR", "x3", 0.995)
+data = introduce_missingness(data, "MAR", "z1", 0.9)
+data$x_sum = data$x1 + data$x2 + data$x3
+```
+
+
+
+longitudinal imputation
+```{r}
+# imputation
+data_use = data %>%
+  dplyr::select(-x_sum, -y)
+data_use$id = as.integer(data_use$id)
+data_use = data_use %>%
+  mutate_all(~ifelse(. == "NaN", NA, .))
+
+# set imputation parameters
+ini = mice(data_use, maxit = 0)
+
+pred = ini$pred
+pred[1:nrow(pred), 1:ncol(pred)] = 0
+pred[c("x1", "x2", "x3"), "id"] = (-2)
+pred[c("x1", "x2", "x3"), c("z1", "z2", "z3")] = 1
+pred[c("x1", "x2", "x3"), "year"] = 2
+pred[c("x1", "x2", "x3"), c("x1", "x2", "x3")] = 1
+pred["z1", c("year", "x1", "x2", "x3", "z2", "z3")] = 1
+diag(pred) = 0
+
+meth = ini$meth
+meth[1: length(meth)] <- ""
+meth[c("x1", "x2", "x3", "z1")] = c("2l.pmm", "2l.pmm", "2l.pmm", "pmm")
+
+imp.use = mice(data_use, pred = pred, meth = meth, m = 5, maxit = 5, seed = 1018, printFlag = F)
+```
+
+
+
+diagnosis
+```{r}
+plot(imp.use)
+densityplot(imp.use)
+```
+
+
+
+Longitudinal SumScore
+```{r}
+# imputation
+data_use = data
+data_use$id = as.integer(data_use$id)
+data_use = data_use %>%
+  mutate_all(~ifelse(. == "NaN", NA, .))
+
+# set imputation parameters
+ini = mice(data_use, maxit = 0)
+
+pred = ini$pred
+pred[1:nrow(pred), 1:ncol(pred)] = 0
+pred[c("x1", "x2", "x3"), "id"] = (-2)
+pred[c("x1", "x2", "x3"), c("x1", "x2", "x3", "z1", "z2", "z3", "y")] = 1
+pred[c("x1", "x2", "x3"), "year"] = 2
+pred["z1", c("year", "x1", "x2", "x3", "z2", "z3", "y")] = 1
+diag(pred) = 0
+
+meth = ini$meth
+meth[1: length(meth)] <- ""
+meth[c("x1", "x2", "x3", "z1")] = c("2l.pmm", "2l.pmm", "2l.pmm", "pmm")
+meth["x_sum"] = "~I(x1 + x2 + x3)"
+
+post = make.post(data)
+post["x1"] = "imp[[j]][, i] = squeeze(imp[[j]][, i], c(-14, 34))"
+post["x2"] = "imp[[j]][, i] = squeeze(imp[[j]][, i], c(0, 7))"
+post["x3"] = "imp[[j]][, i] = squeeze(imp[[j]][, i], c(-0.1, 2))"
+post["x_sum"] = "ifdo(c(x_sum < -17, x_sum > 52), c(-15, 35))"
+
+imp.use = mice(data, pred = pred, meth = meth, m = 5, maxit = 5, seed = 1018, printFlag = F)
+```
+
+
+
+diagnosis
+```{r}
+plot(imp.use)
+densityplot(imp.use)
+```
+
+
