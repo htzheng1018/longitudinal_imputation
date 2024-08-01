@@ -18,56 +18,9 @@ library(remote)
 
 
 
-generate data
+get data
 ```{r}
-n = 10000
-M = 5
-x1 = rnorm(n, mean = 4, sd = 5)
-x2 = sample(0: 7, n, replace = T)
-x3 = runif(n, min = 1, max = 3)
-z1 = exp(rnorm(n, mean = log(sqrt(3.2)), sd = log(sqrt(5/4))))
-z2 = rpois(n, 2)
-z3 = rgamma(n, 3, 2)
-x_sum = x1 + x2 + x3
-y = rnorm(n, mean = 0.5 + x1 + x2 + x3 + 7 * z1 + 3 * z2 + 11 * z3, sd = sqrt(30))
-data_raw = data.frame(y = y, x1 = x1, x2 = x2, x3 = x3, z1 = z1, z2 = z2, z3= z3, x_sum = x_sum)
-```
-
-
-
-missing values
-```{r}
-introduce_missingness = function(data, mechanism, X, prob) {
-  if (mechanism == "MCAR") {
-    data[sample(1:nrow(data), size = round(nrow(data) * (1 - prob))), X] = NA
-  } else if (mechanism == "MAR") {
-    
-    # in MAR, observation is based on complete cases
-    objective_function = function(a, data, prob) {
-      prob_try = plogis(a - 1 / sd(data$y) * data$y)
-      mean_prob = mean(prob_try, na.rm = TRUE)
-      return(abs(mean_prob - prob))  # to make the mean prob close to the target prob
-    }
-    # find the a
-    optimized_a = optimize(objective_function, interval = c(-5, 5), data = data, prob = prob)$minimum
-    # calculate new prob with new a
-    prob = plogis(optimized_a - 1 / sd(data$y) * data$y)
-    
-    data[runif(nrow(data)) > prob, X] = NA
-  }
-  return(data)
-}
-```
-
-
-
-MAR missing type
-```{r}
-data = introduce_missingness(data_raw, "MAR", "x1", 0.3)
-data = introduce_missingness(data, "MAR", "x2", 0.7)
-data = introduce_missingness(data, "MAR", "x3", 0.995)
-data = introduce_missingness(data, "MAR", "z1", 0.9)
-data$x_sum = data$x1 + data$x2 + data$x3
+data = read.csv("data.csv")
 ```
 
 

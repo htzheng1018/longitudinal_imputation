@@ -19,73 +19,9 @@ library(pan)
 
 
 
-generate data
+get data
 ```{r}
-observation_num = 500
-all_years = 2008: 2024
-data_raw = data.frame()
-
-for (i in 1: observation_num) {
-  num_years = sample(1:length(all_years), 1)
-  year = sample(all_years, num_years)
-  
-  data_tmp = data.frame(
-    id = i,
-    year = year
-  )
-  
-  data_raw = rbind(data_raw, data_tmp)
-}
-data_raw = data_raw %>% arrange(id, year)
-
-n = nrow(data_raw)
-
-data_raw$x1 = rnorm(n, mean = 4, sd = 5) + data_raw$year - 2007
-data_raw$x2 = mapply(function(year) {
-  sample(0: round((year - 2008) / 3), 1)
-}, data_raw$year)
-data_raw$x3 = mapply(function(year) {
-  runif(1, min = (year - 2013) / 16, max = (year - 2000) / 16)
-}, data_raw$year)
-
-data_raw$z1 = exp(rnorm(n, mean = log(sqrt(3.2)), sd = log(sqrt(5/4))))
-data_raw$z2 = rpois(n, 2)
-data_raw$z3 = rgamma(n, 3, 2)
-
-data_raw$y = rnorm(n, mean = 0.5 + data_raw$x1 + data_raw$x2 + data_raw$x3 +
-            7 * data_raw$z1 + 3 * data_raw$z2 + 11 * data_raw$z3, sd = sqrt(30))
-```
-
-
-
-missing values
-```{r}
-introduce_missingness = function(data, mechanism, X, prob) {
-  if (mechanism == "MCAR") {
-    data[sample(1:nrow(data), size = round(nrow(data) * (1 - prob))), X] = NA
-  } else if (mechanism == "MAR") {
-    
-    # in MAR, observation is based on complete cases
-    objective_function = function(a, data, prob) {
-      prob_try = plogis(a - 1 / sd(data$y) * data$y)
-      mean_prob = mean(prob_try, na.rm = TRUE)
-      return(abs(mean_prob - prob))  # to make the mean prob close to the target prob
-    }
-    # find the a
-    optimized_a = optimize(objective_function, interval = c(-5, 5), data = data, prob = prob)$minimum
-    # calculate new prob with new a
-    prob = plogis(optimized_a - 1 / sd(data$y) * data$y)
-    
-    data[runif(nrow(data)) > prob, X] = NA
-  }
-  return(data)
-}
-
-data = introduce_missingness(data_raw, "MAR", "x1", 0.3)
-data = introduce_missingness(data, "MAR", "x2", 0.7)
-data = introduce_missingness(data, "MAR", "x3", 0.995)
-data = introduce_missingness(data, "MAR", "z1", 0.9)
-data$x_sum = data$x1 + data$x2 + data$x3
+data = read.csv("data.csv")
 ```
 
 
