@@ -67,6 +67,7 @@ data_raw$z3 = rgamma(n, 3, 2)
 
 data_raw$y = rnorm(n, mean = 0.5 + data_raw$x1 + data_raw$x2 + data_raw$x3 +
             7 * data_raw$z1 + 3 * data_raw$z2 + 11 * data_raw$z3, sd = sqrt(30))
+data_raw$x_sum = data_raw$x1 + data_raw$x2 + data_raw$x3
 ```
 
 
@@ -105,7 +106,14 @@ data$x_sum = data$x1 + data$x2 + data$x3
 
 save the data set
 ```{r}
-write.csv(data, "data_long.csv", row.names = F)
+data_dir = paste0(current_dir, "/Data/")
+
+if (!dir.exists(data_dir)) {
+  dir.create(data_dir)
+}
+
+write.csv(data_raw, file.path(data_dir, "data_longitudinal_raw.csv"), row.names = F)
+write.csv(data, file.path(data_dir, "data_longitudinal.csv"), row.names = F)
 ```
 
 

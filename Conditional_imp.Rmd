@@ -1,0 +1,85 @@
+---
+title: "Conditional_imp"
+author: "Haotian Zheng"
+date: "2024-08-13"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(mice)
+library(dplyr)
+library(ggplot2)
+library(micemd)
+library(remote)
+library(lattice)
+```
+
+
+
+get data
+```{r}
+data = read.csv("Data/data_general.csv")
+data_raw = read.csv("Data/data_general_raw.csv")
+data = data %>% dplyr::select(- x_sum)
+```
+
+
+
+see the range of covariates
+```{r}
+range(data$x1, na.rm = T)
+range(data$x2, na.rm = T)
+range(data$x3, na.rm = T)
+range(data$z1, na.rm = T)
+```
+
+
+
+imputation
+```{r}
+M = 5
+
+ini = mice(data, max = 0, print = FALSE)
+meth = ini$meth
+meth["x1"] = "rf"
+meth["x2"] = "pmm"
+meth["x3"] = "midastouch" # when dataset is very large, "midastouch" will be very slow
+pred = ini$pred
+pred[c("x1", "x2", "x3"), c("z1", "z2", "z3")] = 0
+pred[c("z1", "z2", "z3"), c("x1", "x2", "x3")] = 0
+
+post = ini$post
+post["x1"] = "imp[[j]][, i] = squeeze(imp[[j]][, i], c(-15, 25))"
+post["x2"] = "imp[[j]][, i] = squeeze(imp[[j]][, i], c(0, 5))"
+post["x3"] = "imp[[j]][, i] = squeeze(imp[[j]][, i], c(-3, 6))"
+post["z1"] = "imp[[j]][, i] = squeeze(imp[[j]][, i], c(1, 3))"
+
+imp.con = mice(data, pred = pred, meth = meth, m = M, post = post, maxit = 20, seed = 1018, printFlag = F)
+```
+
+
+
+regression
+```{r}
+beta_true = summary(lm(y ~ x1 + x2 + x3 + z1 + z2 + z3, data = data_raw))$coefficients[, "Estimate"]
+
+beta_imp = c()
+for (i in 1: M) {
+  df_imp = complete(imp.con, i)
+  beta_imp = rbind(beta_imp,
+    summary(lm(y ~ x1 + x2 + x3 + z1 + z2 + z3, data = df_imp))$coefficients[, "Estimate"])
+}
+print(colMeans(beta_imp))
+print(beta_true)
+```
+
+
+
+diagnostics
+```{r}
+plot(imp.con)
+densityplot(imp.con)
+```
+
+
