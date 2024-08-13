@@ -12,7 +12,7 @@ library(dplyr)
 library(ggplot2)
 library(micemd)
 library(miceadds)
-library(miceRanger)
+#library(miceRanger)
 library(remote)
 library(pan)
 ```
@@ -21,7 +21,7 @@ library(pan)
 
 get data
 ```{r}
-data = read.csv("data.csv")
+data = read.csv("Data/data_longitudinal.csv")
 ```
 
 
@@ -76,11 +76,13 @@ data_use = data_use %>%
 ini = mice(data_use, maxit = 0)
 
 pred = ini$pred
-pred[1:nrow(pred), 1:ncol(pred)] = 0
-pred[c("x1", "x2", "x3"), "id"] = (-2)
-pred[c("x1", "x2", "x3"), c("x1", "x2", "x3", "z1", "z2", "z3", "y")] = 1
+pred[, "id"] = -2
 pred[c("x1", "x2", "x3"), "year"] = 2
-pred["z1", c("year", "x1", "x2", "x3", "z2", "z3", "y")] = 1
+pred[c("x1", "x2", "x3"), c("z1", "z2", "z3")] = 0
+pred[c("z1", "z2", "z3"), c("x1", "x2", "x3")] = 0
+pred[c("x1", "x2", "x3"), "x_sum"] = 0
+pred["y", c("x1", "x2", "x3")] = 0
+pred["x_sum", ] = 0
 diag(pred) = 0
 
 meth = ini$meth
@@ -89,10 +91,11 @@ meth[c("x1", "x2", "x3", "z1")] = c("2l.pmm", "2l.pmm", "2l.pmm", "pmm")
 meth["x_sum"] = "~I(x1 + x2 + x3)"
 
 post = make.post(data)
-post["x1"] = "imp[[j]][, i] = squeeze(imp[[j]][, i], c(-14, 34))"
-post["x2"] = "imp[[j]][, i] = squeeze(imp[[j]][, i], c(0, 7))"
-post["x3"] = "imp[[j]][, i] = squeeze(imp[[j]][, i], c(-0.1, 2))"
-post["x_sum"] = "ifdo(c(x_sum < -17, x_sum > 52), c(-15, 35))"
+post["x1"] = "imp[[j]][, i] = squeeze(imp[[j]][, i], c(-13, 38))"
+post["x2"] = "imp[[j]][, i] = squeeze(imp[[j]][, i], c(0, 5))"
+post["x3"] = "imp[[j]][, i] = squeeze(imp[[j]][, i], c(-0.5, 1.5))"
+post["z1"] = "imp[[j]][, i] = squeeze(imp[[j]][, i], c(1, 3.5))"
+post["x_sum"] = "imp[[j]][, i] = squeeze(imp[[j]][, i], c(-13, 42))"
 
 imp.use = mice(data, pred = pred, meth = meth, m = 5, maxit = 5, seed = 1018, printFlag = F)
 ```
