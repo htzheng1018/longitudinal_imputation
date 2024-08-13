@@ -24,7 +24,7 @@ setwd(current_dir)
 
 number of year and observations
 ```{r}
-observation_num = 500
+observation_num = 10000
 all_years = 2008: 2024
 ```
 

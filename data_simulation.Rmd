@@ -24,27 +24,14 @@ setwd(current_dir)
 
 number of year and observations
 ```{r}
-observation_num = 500
-all_years = 2008: 2024
+observation_num = 10000
 ```
 
 
 
 create dataframe
 ```{r}
-data_raw = data.frame()
-for (i in 1: observation_num) {
-  num_years = sample(1:length(all_years), 1)
-  year = sample(all_years, num_years)
-  
-  data_tmp = data.frame(
-    id = i,
-    year = year
-  )
-  
-  data_raw = rbind(data_raw, data_tmp)
-}
-data_raw = data_raw %>% arrange(id, year)
+data_raw = data.frame(id = 1: observation_num)
 ```
 
 
@@ -53,13 +40,9 @@ create an outcome and covariates
 ```{r}
 n = nrow(data_raw)
 
-data_raw$x1 = rnorm(n, mean = 4, sd = 5) + data_raw$year - 2007
-data_raw$x2 = mapply(function(year) {
-  sample(0: round((year - 2008) / 3), 1)
-}, data_raw$year)
-data_raw$x3 = mapply(function(year) {
-  runif(1, min = (year - 2013) / 16, max = (year - 2000) / 16)
-}, data_raw$year)
+data_raw$x1 = rnorm(n, mean = 4, sd = 5)
+data_raw$x2 = sample(0: 5, n, replace = T)
+data_raw$x3 = runif(1, min = -3, max = 6)
 
 data_raw$z1 = exp(rnorm(n, mean = log(sqrt(3.2)), sd = log(sqrt(5/4))))
 data_raw$z2 = rpois(n, 2)
@@ -105,6 +88,7 @@ data$x_sum = data$x1 + data$x2 + data$x3
 
 save the data set
 ```{r}
-write.csv(data, "data.csv", row.names = F)
+write.csv(data, "data_general.csv", row.names = F)
 ```
+
 
