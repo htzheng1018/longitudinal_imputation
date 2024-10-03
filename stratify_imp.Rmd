@@ -1,0 +1,143 @@
+---
+title: "Untitled"
+author: "Haotian Zheng"
+date: "2024-10-01"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(mice)
+library(dplyr)
+library(ggplot2)
+library(micemd)
+library(miceadds)
+#library(miceRanger)
+library(remote)
+library(pan)
+```
+
+
+
+get data
+```{r}
+data = read.csv("Data/data_longitudinal.csv")
+```
+
+
+
+imputation method
+```{r}
+mice.impute.x_ind = function(y, ry, x, wy = NULL, ...) {
+  if (is.null(wy)) wy = !ry
+  
+  ind_1 = x[, "indicator"][!ry] == 1
+  idx_1 = x[, "indicator"] == 1
+  ind_2 = x[, "indicator"][!ry] == 2
+  idx_2 = x[, "indicator"] == 2
+  ind_3 = x[, "indicator"][!ry] == 3
+  idx_3 = x[, "indicator"] == 3
+  ind_na = !(ind_1|ind_2|ind_3)
+  idx_na = !(idx_1|idx_2|idx_3)
+  
+  vec = rep(NA, sum(wy))
+  
+  print(x[idx_na, , drop = FALSE])
+  vec[ind_na] = 1
+  vec[ind_1] = as.integer(mice.impute.pmm(y[idx_1], ry = ry[idx_1], x = x[idx_1, c("x2", "x3", "z1", "z2", "z3"), drop = FALSE], ...))
+  vec[ind_2] = as.integer(mice.impute.pmm(y[idx_2], ry = ry[idx_2], x = x[idx_2, c("x2", "x3", "z1", "z2", "z3"), drop = FALSE], ...))
+  vec[ind_3] = as.integer(mice.impute.pmm(y[idx_3], ry = ry[idx_3], x = x[idx_3, c("x2", "x3", "z1", "z2", "z3"), drop = FALSE], ...))
+
+  # levels(y)[vec]
+}
+```
+
+
+
+longitudinal imputation
+```{r}
+# imputation
+data_use = data %>%
+  dplyr::select(-x_sum, -y)
+data_use$id = as.integer(data_use$id)
+data_use = data_use %>%
+  mutate_all(~ifelse(. == "NaN", NA, .))
+
+# set imputation parameters
+ini = mice(data_use, maxit = 0)
+
+pred = ini$pred
+pred[1:nrow(pred), 1:ncol(pred)] = 0
+# pred[, "x1"] = 0
+# pred[c("x1", "x2", "x3"), "id"] = 1
+pred[c("x1", "x2", "x3"), c("z1", "z2", "z3")] = 1
+pred[c("x1", "x2", "x3"), "year"] = 0
+pred[c("x1", "x2", "x3"), c("x1", "x2", "x3")] = 1
+pred["z1", c("year", "x1", "x2", "x3", "z2", "z3")] = 1
+pred[c("x1", "x2", "x3"), "indicator"] = 1
+diag(pred) = 0
+# pred["x1", ] = c(0, 0, 0, 1, 1, 1, 1, 1, 1)
+
+meth = ini$meth
+# meth[1: length(meth)] = ""
+# meth[c("x1", "x2", "x3", "z1")] = c("x_ind", "pmm", "pmm", "pmm")
+meth["x1"] = "x_ind"
+
+imp.use = mice(data_use, pred = pred, meth = meth, m = 1, maxit = 1, seed = 1018, printFlag = F)
+
+result = complete(imp.use, 1)
+```
+
+
+
+
+
+
+```{r}
+data <- data.frame(
+  aid = factor(c("Q", NA, "Yes", "Q", "No", NA, "Yes", NA, NA, "No")),
+  age = c(60, 54, 82, NA, 34, 58, 60, 58, 76, 40),
+  fall = c(0, NA, 1, 0, 1, NA, 1, 1, 0, 1)
+)
+```
+
+```{r}
+mice.impute.aid <- function(y, ry, x, wy = NULL, ...) {
+  if (is.null(wy)) wy <- !ry
+  
+  fall <- x[, "fall"][!ry] == 1
+  print(x[fall, "fall"][!ry])
+  idx <- x[, "fall"] == 1
+  # fall = is.na(x[, "fall"][!ry])
+  # idx = is.na(x[, "fall"])
+  fall_na = !fall
+  idx_na = !idx
+  vec <- rep(NA, sum(wy))
+  
+  print(x[fall, , drop = FALSE])
+  vec[!fall] <- 1
+  vec[fall] <- as.integer(mice.impute.pmm(y[idx], ry = ry[idx], x = x[idx, "age", drop = FALSE], ...))
+  
+  levels(y)[vec]
+}
+```
+
+```{r}
+ini = mice(data, maxit = 0)
+
+pred <- ini$pred
+pred["fall", "aid"] <- 0
+pred["age", "aid"] <- 0
+
+meth <- ini$meth
+meth$aid <- "aid"
+
+imp <- mice(data, m = 1, maxit = 1, pred = pred, meth = meth, print = FALSE, seed = 1)
+
+result = complete(imp, 1)
+```
+
+
+
+
+
