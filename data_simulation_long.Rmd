@@ -58,7 +58,7 @@ $y_{ij} = \beta_0 +\beta_1 * x_{1ij} +\beta_2 * x_{2ij} + \beta_3 * x_{3ij} + b_
 ```{r}
 # beta_1 to beta_6
 beta_0 = 4
-beta_1 = 0.3
+beta_1 = 0.7
 beta_2 = 2
 beta_3 = 11
 beta_4 = 3
@@ -84,7 +84,7 @@ create an outcome and covariates
 ```{r}
 data_raw$x1 = rnorm(n, mean = 4, sd = 5) + data_raw$year - 2003
 data_raw$x2 = mapply(function(year) {
-  sample(0: round((year - 2005) / 3), 1)
+  rpois(1, round((year - 1980) / 5))
 }, data_raw$year)
 data_raw$x3 = mapply(function(year) {
   runif(1, min = (year - 2008) / 16, max = (year - 1998) / 16)
