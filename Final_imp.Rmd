@@ -1,66 +1,14 @@
 ---
-title: "Longitudinal_imp"
+title: "Final_imp"
 author: "Haotian Zheng"
-date: "2024-07-24"
-output: html_document
+date: "2024-11-06"
+output: pdf_document
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
-library(mice)
-library(dplyr)
-library(ggplot2)
-library(micemd)
-library(miceadds)
-#library(miceRanger)
-library(remote)
-library(pan)
 ```
 
-
-
-get data
-```{r}
-data = read.csv("Data/data_longitudinal.csv")
-```
-
-
-
-longitudinal imputation
-```{r}
-# imputation
-data_use = data %>%
-  dplyr::select(-x_sum, -y)
-data_use$id = as.integer(data_use$id)
-data_use = data_use %>%
-  mutate_all(~ifelse(. == "NaN", NA, .))
-
-# set imputation parameters
-ini = mice(data_use, maxit = 0)
-
-pred = ini$pred
-pred[1:nrow(pred), 1:ncol(pred)] = 0
-pred[c("x1", "x2", "x3"), "id"] = (-2)
-pred[c("x1", "x2", "x3"), c("z1", "z2", "z3")] = 1
-pred[c("x1", "x2", "x3"), "year"] = 2
-pred[c("x1", "x2", "x3"), c("x1", "x2", "x3")] = 1
-pred["z1", c("year", "x1", "x2", "x3", "z2", "z3")] = 1
-diag(pred) = 0
-
-meth = ini$meth
-meth[1: length(meth)] <- ""
-meth[c("x1", "x2", "x3", "z1")] = c("2l.pmm", "2l.pmm", "2l.pmm", "pmm")
-
-imp.use = mice(data_use, pred = pred, meth = meth, m = 5, maxit = 5, seed = 1018, printFlag = F)
-```
-
-
-
-diagnosis
-```{r}
-plot(imp.use)
-densityplot(imp.use)
-```
 
 
 
@@ -107,5 +55,6 @@ diagnosis
 plot(imp.use)
 densityplot(imp.use)
 ```
+
 
 

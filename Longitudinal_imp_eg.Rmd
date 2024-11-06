@@ -1,0 +1,125 @@
+---
+title: "Longitudinal_imp"
+author: "Haotian Zheng"
+date: "2024-07-24"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(mice)
+library(dplyr)
+library(ggplot2)
+library(micemd)
+library(miceadds)
+library(remote)
+library(pan)
+# library(miceRanger)
+```
+
+
+
+get data
+```{r}
+data = read.csv("Data/data_longitudinal.csv")
+```
+
+
+
+longitudinal imputation
+```{r}
+# imputation
+data_use = data %>%
+  dplyr::select(-x_sum)
+data_use$id = as.integer(data_use$id)
+data_use = data_use %>%
+  mutate_all(~ifelse(. == "NaN", NA, .))
+
+# set imputation parameters
+ini = mice(data_use, maxit = 0)
+
+pred = ini$pred
+pred[1:nrow(pred), 1:ncol(pred)] = 0
+# pred[c("x1", "x2", "x3"), "id"] = (-2)
+pred[, "id"] = (-2)
+pred[, c("z1", "z2", "z3")] = 1
+pred[c("x1", "x2", "x3"), c("x1", "x2", "x3")] = 3
+pred[, c("x1", "x2", "x3")] = 3
+pred[, "y"] = 4
+diag(pred) = 0
+
+meth = ini$meth
+meth[c("x1", "x2", "x3", "y")] = c("2l.pmm", "2l.pmm", "2l.pmm", "2l.pmm")
+
+imp.use = mice(data_use, pred = pred, meth = meth, m = 5, maxit = 5, seed = 1018, printFlag = F)
+```
+
+
+
+diagnosis
+```{r}
+plot(imp.use)
+densityplot(imp.use)
+```
+
+
+
+```{r}
+# discrete variable
+complete_data = complete(imp.use, action = "long", include = TRUE)
+complete_data$.imp = as.factor(complete_data$.imp)
+ggplot(complete_data, aes(x = x2, fill = .imp)) +
+  geom_bar(position = "dodge") +
+  labs(fill = "Imputation") +
+  theme_bw()
+```
+
+
+
+imputation for a single variable
+```{r}
+# imputation
+data_use = data %>%
+  dplyr::select(id, year, x2, y)
+data_use$id = as.integer(data_use$id)
+data_use = data_use %>%
+  mutate_all(~ifelse(. == "NaN", NA, .))
+
+# set imputation parameters
+ini = mice(data_use, maxit = 0)
+
+pred = ini$pred
+pred[1:nrow(pred), 1:ncol(pred)] = 0
+# pred[c("x1", "x2", "x3"), "id"] = (-2)
+pred[, "id"] = (-2)
+pred[, c("x2")] = 3
+pred[, "y"] = 4
+diag(pred) = 0
+
+meth = ini$meth
+meth[c("x2", "y")] = c("2l.pmm", "2l.pmm")
+
+imp.use = mice(data_use, pred = pred, meth = meth, m = 5, maxit = 5, seed = 1018, printFlag = F)
+```
+
+
+
+```{r}
+plot(imp.use)
+densityplot(imp.use)
+```
+
+
+
+```{r}
+# discrete variable
+complete_data = complete(imp.use, action = "long", include = TRUE)
+complete_data$.imp = as.factor(complete_data$.imp)
+ggplot(complete_data, aes(x = x2, fill = .imp)) +
+  geom_bar(position = "dodge") +
+  labs(fill = "Imputation") +
+  theme_bw()
+```
+
+
+
