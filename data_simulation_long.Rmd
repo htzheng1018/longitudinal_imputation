@@ -82,14 +82,14 @@ b_3i = rand_effect_matrix[, 4]
 
 create covariates
 ```{r}
-# time-varying covariates
-data_raw$x1 = rnorm(n, mean = 4, sd = 5) + data_raw$year - 2003
+# time-varying covariates: time term + id term
+data_raw$x1 = rnorm(n, mean = 4, sd = 5) + data_raw$year - 2003 + exp(rnorm(observation_num, mean = 2, sd = 1))[data_raw$id]
 data_raw$x2 = mapply(function(year) {
   rpois(1, round((year - 1980) / 5))
-}, data_raw$year)
+}, data_raw$year) + rpois(observation_num, 8)[data_raw$id]
 data_raw$x3 = mapply(function(year) {
   runif(1, min = (year - 2008) / 16, max = (year - 1998) / 16)
-}, data_raw$year)
+}, data_raw$year) + rgamma(observation_num, 1, 3)[data_raw$id]
 
 # individual covariates
 z1 = exp(rnorm(observation_num, mean = log(sqrt(3.2)), sd = log(sqrt(5/4))))
@@ -107,11 +107,9 @@ data_raw$indicator = sample(1:3, size = n, replace = TRUE, prob = c(0.6, 0.3, 0.
 
 create outcomes
 ```{r}
-# outcome
 data_raw$y = beta_0 + beta_1 * data_raw$x1 + beta_2 * data_raw$x2 + beta_3 * data_raw$x3 +  b_0i[data_raw$id] + b_1i[data_raw$id] * data_raw$x1 + b_2i[data_raw$id] * data_raw$x2 + b_3i[data_raw$id] * data_raw$x3 + beta_4 * data_raw$z1 + beta_5 * data_raw$z2 + beta_6 * data_raw$z3
-
-# sum
-data_raw$x_sum = data_raw$x1 + data_raw$x2 + data_raw$x3
+rsd = rnorm(nrow(data_raw), 0, 1)
+data_raw$y = data_raw$y + rsd
 ```
 
 
@@ -144,6 +142,7 @@ data = introduce_missingness(data, "MAR", "x2", 0.7)
 data = introduce_missingness(data, "MAR", "x3", 0.995)
 data = introduce_missingness(data, "MAR", "z1", 0.9)
 data = introduce_missingness(data, "MAR", "indicator", 0.4)
+data = introduce_missingness(data, "MAR", "y", 0.5)
 data$x_sum = data$x1 + data$x2 + data$x3
 ```
 

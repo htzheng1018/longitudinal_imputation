@@ -45,6 +45,7 @@ pred[, "id"] = (-2)
 pred[, c("z1", "z2", "z3")] = 1
 pred[c("x1", "x2", "x3"), c("x1", "x2", "x3")] = 3
 pred[, c("x1", "x2", "x3")] = 3
+pred[, "year"] = -1
 pred[, "y"] = 4
 diag(pred) = 0
 
@@ -93,13 +94,18 @@ pred[1:nrow(pred), 1:ncol(pred)] = 0
 # pred[c("x1", "x2", "x3"), "id"] = (-2)
 pred[, "id"] = (-2)
 pred[, c("x2")] = 3
+pred[, "year"] = -1
 pred[, "y"] = 4
 diag(pred) = 0
 
 meth = ini$meth
+meth1 = ini$meth
 meth[c("x2", "y")] = c("2l.pmm", "2l.pmm")
+meth1[c("x2", "y")] = c("pmm", "pmm")
+
 
 imp.use = mice(data_use, pred = pred, meth = meth, m = 5, maxit = 5, seed = 1018, printFlag = F)
+imp.use1 = mice(data_use, pred = pred, meth = meth1, m = 5, maxit = 5, seed = 1018, printFlag = F)
 ```
 
 
@@ -107,6 +113,7 @@ imp.use = mice(data_use, pred = pred, meth = meth, m = 5, maxit = 5, seed = 1018
 ```{r}
 plot(imp.use)
 densityplot(imp.use)
+densityplot(imp.use1)
 ```
 
 
