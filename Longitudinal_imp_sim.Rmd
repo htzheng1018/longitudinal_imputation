@@ -48,7 +48,6 @@ introduce_missingness = function(data, mechanism, X, prob) {
 
 
 
-
 create data
 ```{r}
 create_data = function(observation_num, start_year, time_type, time_params, beta_1, id_type, id_params, beta_2) {
@@ -129,8 +128,7 @@ run_on_cluster(
     sim = new_sim()
     
     sim %<>% set_levels(
-      # observation_num = c(1000, 2000),
-      observation_num = 1000,
+      observation_num = 100,
       start_years = 1990,
       cvr_list = list(
         "Norm_Exp" = list(time_type = "Normal", time_params = c(4, 5, 2, 1), time_beta = 0.7, id_type = "Exponential", id_params = c(log(sqrt(3.2)), log(sqrt(5/4))), id_beta = 3),
@@ -139,7 +137,7 @@ run_on_cluster(
       )
     )
     
-    sim %<>% set_config(num_sim = 10, n_cores = 4, seed = 1018,
+    sim %<>% set_config(num_sim = 1000, n_cores = 4, seed = 1018,
                         packages = c("dplyr", "parallel", "MASS", "Matrix", "mice", "miceadds")
     )
     
@@ -183,14 +181,16 @@ run_on_cluster(
         mean_x1_pmm[i] = mean(complete(imp.use, i)$x1)
       }
       
-      print(mean(mean_x1_2lpmm))
+      x1_2lpmm = mean(mean_x1_2lpmm)
+      x1_pmm = mean(mean_x1_pmm)
+      x1_true = mean(data_raw$x1)
       
       return(list(
-        "x1_true" = mean(data_raw$x1),
-        "x1_2lpmm" = mean(mean_x1_2lpmm),
-        "x1_pmm" = mean(mean_x1_pmm),
-        "2l_pctg" = (x1_2lpmm - x1_true) / x1_true * 100,
-        "1l_pctg" = (x1_pmm - x1_true) / x1_true * 100,
+        "x1_true" = x1_true,
+        "x1_2lpmm" = x1_2lpmm,
+        "x1_pmm" = x1_pmm,
+        "x1_2l_pctg" = (x1_2lpmm - x1_true) / x1_true * 100,
+        "x1_1l_pctg" = (x1_pmm - x1_true) / x1_true * 100,
         ".complex" = list(
           "data_raw" = data_raw,
           "data" = data
@@ -213,9 +213,9 @@ run_on_cluster(
       # list(stat = "coverage", lower = "1l_low", upper = "1l_up", truth = "x1_true", name = "cov_x1_1l")
     )
     # bias percentage
-    bias_Q_pct = sim %>% SimEngine::summarize(
-      list(stat = "mean", x = "2l_pctg", name = "bias_x1_2lpmm"),
-      list(stat = "mean", x = "1l_pctg", name = "bias_x1_pmm")
+    bias_x1_pct = sim %>% SimEngine::summarize(
+      list(stat = "mean", x = "x1_2l_pctg", name = "bias_x1_2lpmm"),
+      list(stat = "mean", x = "x1_1l_pctg", name = "bias_x1_pmm")
     )
   },
   
