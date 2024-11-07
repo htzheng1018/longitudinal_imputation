@@ -81,7 +81,7 @@ imputation for a single variable
 ```{r}
 # imputation
 data_use = data %>%
-  dplyr::select(id, year, x2, y)
+  dplyr::select(id, year, x2, y, z2)
 data_use$id = as.integer(data_use$id)
 data_use = data_use %>%
   mutate_all(~ifelse(. == "NaN", NA, .))
@@ -96,6 +96,7 @@ pred[, "id"] = (-2)
 pred[, c("x2")] = 3
 pred[, "year"] = -1
 pred[, "y"] = 4
+pred["z2", ] = c(0, 0, 1, 1, 0)
 diag(pred) = 0
 
 meth = ini$meth

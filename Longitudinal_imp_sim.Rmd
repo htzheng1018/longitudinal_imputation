@@ -9,14 +9,15 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 library(mice)
 library(dplyr)
-library(ggplot2)
-library(micemd)
+# library(ggplot2)
+# library(micemd)
 library(miceadds)
-library(remote)
-library(pan)
+# library(remote)
+# library(pan)
 # library(miceRanger)
-
 library(SimEngine)
+library(MASS)
+library(Matrix)
 ```
 
 
@@ -50,10 +51,11 @@ introduce_missingness = function(data, mechanism, X, prob) {
 
 create data
 ```{r}
-create_data = function(obervation_num, all_years, time_type, time_params, beta_1, id_type, id_params, beta_2) {
+create_data = function(observation_num, start_year, time_type, time_params, beta_1, id_type, id_params, beta_2) {
+  all_years = seq(start_year, 2020, by = 2)
   data_raw = data.frame()
   for (i in 1: observation_num) {
-    num_years = sample(1:length(all_years), 1)
+    num_years = sample((1: length(all_years)), 1)
     year = sample(all_years, num_years)
     
     data_tmp = data.frame(
@@ -69,9 +71,8 @@ create_data = function(obervation_num, all_years, time_type, time_params, beta_1
   
   n_random_effects = 2
   mean_vector = rep(0, n_random_effects)
-  initial_matrix = matrix(runif(n_random_effects ^ 2, -1, 1), nrow = n_random_effects)
-  sym_matrix = (initial_matrix + t(initial_matrix)) / 2
-  random_effects_cov = nearPD(sym_matrix)$mat
+  wishart_matrix = rWishart(1, df = n_random_effects + 2, Sigma = diag(n_random_effects))[,,1]
+  random_effects_cov = wishart_matrix
   rand_effect_matrix = mvrnorm(observation_num, mu = mean_vector, Sigma = random_effects_cov)
   
   # random effect
@@ -109,45 +110,11 @@ create_data = function(obervation_num, all_years, time_type, time_params, beta_1
   # missing values
   data = introduce_missingness(data_raw, "MAR", "x1", 0.3)
   data = introduce_missingness(data, "MAR", "z1", 0.9)
-  data = introduce_missingness(data, "MAR", "y", 0.5)
+  data = introduce_missingness(data, "MAR", "y", 0.8)
   
   return(list(data = data, raw = data_raw))
 }
 ```
-
-
-
-try
-```{r}
-observation_num = 1000
-all_years = all_years = seq(1990, 2020, by = 2)
-time_cvr = list(
-  "Norm" = list(distr_type = "Normal", distr_params = c(4, 5, 2, 1), beta = 0.7),
-  "Pois" = list(distr_type = "Poisson", distr_params = 8, beta = 2),
-  "Uni" = list(distr_type = "Uniform", distr_params = c(1, 3), beta = 11)
-)
-id_cvr = list(
-  "Exp" = list(distr_type = "Exponential", distr_params = c(log(sqrt(3.2)), log(sqrt(5/4))), beta = 3),
-  "Pois" = list(distr_type = "Poisson", distr_params = 2, beta = 1.5),
-  "Gam" = list(distr_type = "Gamma", distr_params = c(3, 2), beta = 12)
-)
-
-
-
-
-data = create_data(obervation_num, all_years, "Poisson", 8, 2, "Exponential", c(log(sqrt(3.2)), log(sqrt(5/4))), 3)$raw
-
-
-
-for (i in 1:5) {
-  print(mean(complete(imp.use, i)$x1))
-}
-
-```
-
-
-
-
 
 
 
@@ -162,27 +129,23 @@ run_on_cluster(
     sim = new_sim()
     
     sim %<>% set_levels(
-      observation_num = c(10, 20),
-      all_years = seq(1990, 2020, by = 2),
-      time_cvr = list(
-        "Norm" = list(distr_type = "Normal", distr_params = c(4, 5, 2, 1), beta = 0.7),
-        "Pois" = list(distr_type = "Poisson", distr_params = 8, beta = 2),
-        "Uni" = list(distr_type = "Uniform", distr_params = c(1, 3), beta = 11)
-      ),
-      id_cvr = list(
-        "Exp" = list(distr_type = "Exponential", distr_params = c(log(sqrt(3.2)), log(sqrt(5/4))), beta = 3),
-        "Pois" = list(distr_type = "Poisson", distr_params = 2, beta = 1.5),
-        "Gam" = list(distr_type = "Gamma", distr_params = c(3, 2), beta = 12)
+      # observation_num = c(1000, 2000),
+      observation_num = 1000,
+      start_years = 1990,
+      cvr_list = list(
+        "Norm_Exp" = list(time_type = "Normal", time_params = c(4, 5, 2, 1), time_beta = 0.7, id_type = "Exponential", id_params = c(log(sqrt(3.2)), log(sqrt(5/4))), id_beta = 3),
+        "Pois_Pois" = list(time_type = "Poisson", time_params = 8, time_beta = 2, id_type = "Poisson", id_params = 2, id_beta = 1.5),
+        "Uni_Gam" = list(time_type = "Uniform", time_params = c(1, 3), time_beta = 11, id_type = "Gamma", id_params = c(3, 2), id_beta = 12)
       )
     )
     
     sim %<>% set_config(num_sim = 10, n_cores = 4, seed = 1018,
                         packages = c("dplyr", "parallel", "MASS", "Matrix", "mice", "miceadds")
-                        )
+    )
     
     sim %<>% set_script(function() {
-      data = create_data(L$obervation_num, L$all_years, L$time_cvr$distr_type, L$time_cvr$distr_params, L$time_cvr$beta, L$id_cvr$distr_type, L$id_cvr$distr_params, L$id_cvr$beta)$data
-      data_raw = create_data(L$obervation_num, L$all_years, L$time_cvr$distr_type, L$time_cvr$distr_params, L$time_cvr$beta, L$id_cvr$distr_type, L$id_cvr$distr_params, L$id_cvr$beta)$raw
+      data = create_data(L$observation_num, L$start_year, L$cvr_list$time_type, L$cvr_list$time_params, L$cvr_list$time_beta, L$cvr_list$id_type, L$cvr_list$id_params, L$cvr_list$id_beta)$data
+  data_raw = create_data(L$observation_num, L$start_year, L$cvr_list$time_type, L$cvr_list$time_params, L$cvr_list$time_beta, L$cvr_list$id_type, L$cvr_list$id_params, L$cvr_list$id_beta)$raw
       
       # imputation dataset
       data_use = data %>%
@@ -197,9 +160,10 @@ run_on_cluster(
       pred = ini$pred
       pred[1:nrow(pred), 1:ncol(pred)] = 0
       pred[, "id"] = (-2)
+      pred[, "year"] = (-1)
       pred[, c("x1")] = 3
-      pred[, "year"] = -1
       pred[, "y"] = 4
+      pred["z1", ] = c(0, 0, 1, 1, 0)
       diag(pred) = 0
       
       meth2l = ini$meth
@@ -208,22 +172,25 @@ run_on_cluster(
       meth[c("x1", "y")] = c("pmm", "pmm")
       
       # imputation process
-      imp.use2l = mice(data_use, pred = pred, meth = meth2l, m = 5, maxit = 5, seed = 1018, printFlag = F)
-      imp.use = mice(data_use, pred = pred, meth = meth, m = 5, maxit = 5, seed = 1018, printFlag = F)
+      m = 5
+      imp.use2l = mice(data_use, pred = pred, meth = meth2l, m = m, maxit = 5, seed = 1018, printFlag = F)
+      imp.use = mice(data_use, pred = pred, meth = meth, m = m, maxit = 5, seed = 1018, printFlag = F)
       
       mean_x1_2lpmm = c()
       mean_x1_pmm = c()
       for (i in (1: m)) {
-         mean_x1_2lpmm[i] = mean(complete(imp.use2l, i)$x1)
-         mean_x1_pmm[i] = mean(complete(imp.use, i)$x1)
+        mean_x1_2lpmm[i] = mean(complete(imp.use2l, i)$x1)
+        mean_x1_pmm[i] = mean(complete(imp.use, i)$x1)
       }
       
+      print(mean(mean_x1_2lpmm))
+      
       return(list(
-        "x1_true" = mean(data_raw$id),
+        "x1_true" = mean(data_raw$x1),
         "x1_2lpmm" = mean(mean_x1_2lpmm),
         "x1_pmm" = mean(mean_x1_pmm),
         "2l_pctg" = (x1_2lpmm - x1_true) / x1_true * 100,
-        "1l_pctg" = (x1_pmm - x1_true) / x1_true *100,
+        "1l_pctg" = (x1_pmm - x1_true) / x1_true * 100,
         ".complex" = list(
           "data_raw" = data_raw,
           "data" = data
@@ -262,4 +229,70 @@ end_time = Sys.time()
 execution_time = end_time - start_time
 print(execution_time)
 ```
+
+
+
+
+
+try
+```{r}
+observation_num = 1000
+all_years = all_years = seq(1990, 2020, by = 2)
+time_cvr = list(
+  "Norm" = list(distr_type = "Normal", distr_params = c(4, 5, 2, 1), beta = 0.7),
+  "Pois" = list(distr_type = "Poisson", distr_params = 8, beta = 2),
+  "Uni" = list(distr_type = "Uniform", distr_params = c(1, 3), beta = 11)
+)
+id_cvr = list(
+  "Exp" = list(distr_type = "Exponential", distr_params = c(log(sqrt(3.2)), log(sqrt(5/4))), beta = 3),
+  "Pois" = list(distr_type = "Poisson", distr_params = 2, beta = 1.5),
+  "Gam" = list(distr_type = "Gamma", distr_params = c(3, 2), beta = 12)
+)
+
+
+
+
+data = create_data(observation_num, all_years, "Uniform", c(1, 3), 11, "Gamma", c(3, 2), 12)$data
+
+
+
+# imputation dataset
+data_use = data %>%
+  dplyr::select(id, year, x1, z1, y)
+data_use$id = as.integer(data_use$id)
+data_use = data_use %>%
+  mutate_all(~ifelse(. == "NaN", NA, .))
+
+# set imputation parameters
+ini = mice(data_use, maxit = 0)
+
+pred = ini$pred
+pred[1:nrow(pred), 1:ncol(pred)] = 0
+pred[, "id"] = (-2)
+pred[, "year"] = (-1)
+pred[, c("x1")] = 3
+pred[, "y"] = 4
+pred["z1", ] = c(0, 0, 1, 1, 0)
+diag(pred) = 0
+
+meth2l = ini$meth
+meth = ini$meth
+meth2l[c("x1", "y")] = c("2l.pmm", "2l.pmm")
+meth[c("x1", "y")] = c("pmm", "pmm")
+
+m = 5
+imp.use2l = mice(data_use, pred = pred, meth = meth2l, m = m, maxit = 5, seed = 1018, printFlag = F)
+
+mean_x1_2lpmm = c()
+for (i in (1: m)) {
+  mean_x1_2lpmm[i] = mean(complete(imp.use2l, i)$x1)
+}
+  
+
+```
+
+
+
+
+
 
