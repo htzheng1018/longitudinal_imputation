@@ -208,7 +208,9 @@ run_on_cluster(
     # bias
     bias_x1 = sim %>% SimEngine::summarize(
       list(stat = "bias", estimate = "x1_2lpmm", truth = "x1_true", name = "bias_x1_2l"),
-      list(stat = "bias", estimate = "x1_pmm", truth = "x1_true", name = "bias_x1_1l")
+      list(stat = "bias", estimate = "x1_pmm", truth = "x1_true", name = "bias_x1_1l"),
+      list(stat = "mse", estimate = "x1_2lpmm", truth = "x1_true", name = "mse_x1_2l"),
+      list(stat = "mse", estimate = "x1_pmm", truth = "x1_true", name = "mse_x1_1l")
       # list(stat = "coverage", lower = "2l_low", upper = "2l_up", truth = "x1_true", name = "cov_x1_2l"),
       # list(stat = "coverage", lower = "1l_low", upper = "1l_up", truth = "x1_true", name = "cov_x1_1l")
     )
