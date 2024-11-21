@@ -51,7 +51,7 @@ introduce_missingness = function(data, mechanism, X, prob) {
 create data
 ```{r}
 create_data = function(observation_num, start_year, time_type, time_params, beta_1, id_type, id_params, beta_2) {
-  all_years = seq(start_year, 2020, by = 2)
+  all_years = seq(start_year, 2014, by = 2)
   data_raw = data.frame()
   for (i in 1: observation_num) {
     num_years = sample((1: length(all_years)), 1)
@@ -88,7 +88,7 @@ create_data = function(observation_num, start_year, time_type, time_params, beta
     }, data_raw$year) + rpois(observation_num, time_params[1])[data_raw$id]
   } else if (time_type == "Uniform") {
     data_raw$x1 = mapply(function(year) {
-      runif(1, min = (year - 2008) / 16, max = (year - 1998) / 16)
+      runif(1, min = (year - 2008) / 8, max = (year - 1998) / 8)
     }, data_raw$year) + rgamma(observation_num, time_params[1], time_params[2])[data_raw$id]
   }
   
@@ -128,12 +128,17 @@ run_on_cluster(
     sim = new_sim()
     
     sim %<>% set_levels(
-      observation_num = 100,
-      start_years = 1990,
-      cvr_list = list(
-        "Norm_Exp" = list(time_type = "Normal", time_params = c(4, 5, 2, 1), time_beta = 0.7, id_type = "Exponential", id_params = c(log(sqrt(3.2)), log(sqrt(5/4))), id_beta = 3),
-        "Pois_Pois" = list(time_type = "Poisson", time_params = 8, time_beta = 2, id_type = "Poisson", id_params = 2, id_beta = 1.5),
-        "Uni_Gam" = list(time_type = "Uniform", time_params = c(1, 3), time_beta = 11, id_type = "Gamma", id_params = c(3, 2), id_beta = 12)
+      observation_num = c(50, 100, 200),
+      start_years = 2000,
+      time_list = list(
+        "Norm" = list(time_type = "Normal", time_params = c(4, 5, 2, 1), time_beta = 0.7),
+        "Pois" = list(time_type = "Poisson", time_params = 8, time_beta = 2),
+        "Uni" = list(time_type = "Uniform", time_params = c(1, 3), time_beta = 11)
+      ),
+      id_list = list(
+        "Exp" = list(id_type = "Exponential", id_params = c(log(sqrt(3.2)), log(sqrt(5/4))), id_beta = 3),
+        "Pois" = list(id_type = "Poisson", id_params = 2, id_beta = 1.5),
+        "Gam" = list(id_type = "Gamma", id_params = c(3, 2), id_beta = 12)
       )
     )
     
@@ -142,8 +147,8 @@ run_on_cluster(
     )
     
     sim %<>% set_script(function() {
-      data = create_data(L$observation_num, L$start_year, L$cvr_list$time_type, L$cvr_list$time_params, L$cvr_list$time_beta, L$cvr_list$id_type, L$cvr_list$id_params, L$cvr_list$id_beta)$data
-  data_raw = create_data(L$observation_num, L$start_year, L$cvr_list$time_type, L$cvr_list$time_params, L$cvr_list$time_beta, L$cvr_list$id_type, L$cvr_list$id_params, L$cvr_list$id_beta)$raw
+      data = create_data(L$observation_num, L$start_year, L$time_list$time_type, L$time_list$time_params, L$time_list$time_beta, L$id_list$id_type, L$id_list$id_params, L$id_list$id_beta)$data
+  data_raw = create_data(L$observation_num, L$start_year, L$time_list$time_type, L$time_list$time_params, L$time_list$time_beta, L$id_list$id_type, L$id_list$id_params, L$id_list$id_beta)$raw
       
       # imputation dataset
       data_use = data %>%
@@ -289,7 +294,7 @@ mean_x1_2lpmm = c()
 for (i in (1: m)) {
   mean_x1_2lpmm[i] = mean(complete(imp.use2l, i)$x1)
 }
-  
+
 
 ```
 
