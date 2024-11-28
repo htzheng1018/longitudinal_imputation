@@ -2,7 +2,7 @@
 imp_pmm_sumscore = function(data, tv, iv, x_sum, m) {
   # imputation dataset
   data_use = data %>%
-    dplyr::select(id, year, tv, iv, y)
+    dplyr::select(id, year, tv, iv, x_sum, y)
   data_use$id = as.integer(data_use$id)
   data_use = data_use %>%
     mutate_all(~ifelse(. == "NaN", NA, .))
