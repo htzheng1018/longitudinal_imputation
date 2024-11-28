@@ -40,10 +40,8 @@ create_data = function(observation_num, start_year, time_type, time_params, beta
   }
   
   # time-varying covariates
-  beta_0 = 4
+  beta_0 = 2
   beta_1 = beta_tv[1]
-  beta_2 = beta_tv[2]
-  beta_3 = beta_tv[3]
   if (time_type == "Normal") {
     data_raw$x1 = round(rnorm(n, mean = time_params[1], sd = time_params[2])
                         + data_raw$year - 2003
@@ -80,12 +78,12 @@ create_data = function(observation_num, start_year, time_type, time_params, beta
   }
   
   # outcome
-  data_raw$y = beta_0 + beta_1 * data_raw$x1 + beta_2 * data_raw$x2 + beta_3 * data_raw$x3 +
-    b_0i[data_raw$id] + b_1i[data_raw$id] * data_raw$x1 + b_2i[data_raw$id] * data_raw$x2 + b_3i[data_raw$id] * data_raw$x3 +
+  data_raw$x_sum = data_raw$x1 + data_raw$x2 + data_raw$x3
+  data_raw$y = beta_0 + beta_1 * data_raw$x_sum +
+    b_0i[data_raw$id] + b_1i[data_raw$id] * data_raw$x_sum +
     beta_iv * data_raw$z1
   rsd = rnorm(nrow(data_raw), 0, 1)
   data_raw$y = data_raw$y + rsd
-  data_raw$x_sum = data_raw$x1 + data_raw$x2 + data_raw$x3
   
   # missing values
   data = introduce_missingness(data_raw, "MAR", "x1", 0.3)

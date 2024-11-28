@@ -7,8 +7,9 @@
   library(SimEngine)
   source("create_data.R", local = T)
   source("introduce_missingness.R", local = T)
-  source("imp_pmm.R", local = T)
+  # source("imp_pmm.R", local = T)
   # source("imp_2lpmm.R", local = T)
+  source("imp_sumscore.R", local = T)
   source("imp_2lpmm_sumscore.R", local = T)
 }
 
@@ -55,7 +56,7 @@ run_on_cluster(
       # imputation process
       m = 5
       imp.use2l = imp_2lpmm_sumscore(data, c("x1", "x2", "x3"), "z1", "x_sum", m)
-      imp.use = imp_pmm(data, c("x1", "x2", "x3", "x_sum"), "z1", m)
+      imp.use = imp_pmm_sumscore(data, c("x1", "x2", "x3", "x_sum"), "z1", m)
       
       mean_xsum_2lpmm = c()
       mean_xsum_pmm = c()
@@ -72,7 +73,7 @@ run_on_cluster(
       return(list(
         "xsum_true" = xsum_true,
         "xsum_2lpmm" = xsum_2lpmm,
-        "xsum_pmm" = xum_pmm,
+        "xsum_pmm" = xsum_pmm,
         "xsum_2l_pctg" = (xsum_2lpmm - xsum_true) / xsum_true * 100,
         "xsum_1l_pctg" = (xsum_pmm - xsum_true) / xsum_true * 100,
         ".complex" = list(
