@@ -109,7 +109,8 @@ run_on_cluster(
   cluster_config = list(js = "slurm")
 )
 
-
+write.csv(bias_xsum, "bias_sum.csv", row.names = FALSE)
+write.csv(bias_xsum_pct, "bias_sum_pct.csv", row.names = FALSE)
 
 # end time
 end_time = Sys.time()
