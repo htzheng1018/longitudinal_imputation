@@ -7,8 +7,9 @@
   library(SimEngine)
   source("create_data.R", local = T)
   source("introduce_missingness.R", local = T)
-  source("imp_2lpmm.R", local = T)
   source("imp_pmm.R", local = T)
+  # source("imp_2lpmm.R", local = T)
+  source("imp_2lpmm_sumscore.R", local = T)
 }
 
 
@@ -31,9 +32,9 @@ run_on_cluster(
       observation_num = 100,
       start_years = 2000,
       time_list = list(
-        "Norm" = list(time_type = "Normal", time_params = c(4, 5, 2, 1), time_beta = 0.7),
-        "Pois" = list(time_type = "Poisson", time_params = 8, time_beta = 2),
-        "Uni" = list(time_type = "Uniform", time_params = c(1, 3), time_beta = 11)
+        "Norm" = list(time_type = "Normal", time_params = c(4, 5, 2, 1), time_beta = c(0.7, 0.8, 0.9)),
+        "Pois" = list(time_type = "Poisson", time_params = 8, time_beta = c(2, 2.2, 2.5)),
+        "Uni" = list(time_type = "Uniform", time_params = c(1, 3), time_beta = c(11, 11.5, 12))
       ),
       id_list = list(
         "Exp" = list(id_type = "Exponential", id_params = c(log(sqrt(3.2)), log(sqrt(5/4))), id_beta = 3),

@@ -1,5 +1,5 @@
-# two level pmm imputation
-imp_2lpmm = function(data, tv, iv, m) {
+# two level pmm + sum score imputation
+imp_2lpmm_sumscore = function(data, tv, iv, m) {
   # imputation dataset
   data_use = data %>%
     dplyr::select(id, year, tv, iv, y)
@@ -16,7 +16,7 @@ imp_2lpmm = function(data, tv, iv, m) {
   pred[, "year"] = (-1)
   pred[, tv] = 3
   pred[, "y"] = 3
-  pred[iv, ] = c(0, 0, rep(0, length(tv)), rep(1, length(iv)), 1)
+  pred[iv, ] = c(0, 0, rep(1, length(tv) + length(iv)), 0)
   diag(pred) = 0
   
   meth = ini$meth
