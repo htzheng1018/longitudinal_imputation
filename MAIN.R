@@ -44,7 +44,7 @@ run_on_cluster(
       )
     )
     
-    sim %<>% set_config(num_sim = 10, n_cores = 4, seed = 1018,
+    sim %<>% set_config(num_sim = 1000, n_cores = 4, seed = 1018,
                         packages = c("dplyr", "parallel", "MASS", "Matrix", "mice", "miceadds")
     )
     
@@ -54,7 +54,7 @@ run_on_cluster(
       data_raw = create_data(L$observation_num, L$start_year, L$time_list$time_type, L$time_list$time_params, L$time_list$time_beta, L$id_list$id_type, L$id_list$id_params, L$id_list$id_beta)$raw
       
       # imputation process
-      m = 5
+      m = 10
       imp.use2l = imp_2lpmm_sumscore(data, c("x1", "x2", "x3"), "z1", "x_sum", m)
       imp.use = imp_pmm_sumscore(data, c("x1", "x2", "x3"), "z1", "x_sum", m)
       
