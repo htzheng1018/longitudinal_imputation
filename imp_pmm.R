@@ -1,8 +1,8 @@
 # simple pmm imputation
-imp_pmm = function(data, tv1, iv1, m) {
+imp_pmm = function(data, tv, iv, m) {
   # imputation dataset
   data_use = data %>%
-    dplyr::select(id, year, tv1, iv1, y)
+    dplyr::select(id, year, tv, iv, y)
   data_use$id = as.integer(data_use$id)
   data_use = data_use %>%
     mutate_all(~ifelse(. == "NaN", NA, .))

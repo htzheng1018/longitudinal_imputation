@@ -54,27 +54,27 @@ run_on_cluster(
       
       # imputation process
       m = 5
-      imp.use2l = imp_2lpmm(data, "x1", "z1", m)
-      imp.use = imp_pmm(data, "x1", "z1", m)
+      imp.use2l = imp_2lpmm_sumscore(data, c("x1", "x2", "x3"), "z1", "x_sum", m)
+      imp.use = imp_pmm(data, c("x1", "x2", "x3", "x_sum"), "z1", m)
       
-      mean_x1_2lpmm = c()
-      mean_x1_pmm = c()
+      mean_xsum_2lpmm = c()
+      mean_xsum_pmm = c()
       for (i in (1: m)) {
-        mean_x1_2lpmm[i] = mean(complete(imp.use2l, i)$x1)
-        mean_x1_pmm[i] = mean(complete(imp.use, i)$x1)
+        mean_xsum_2lpmm[i] = mean(complete(imp.use2l, i)$x_sum)
+        mean_xsum_pmm[i] = mean(complete(imp.use, i)$x_sum)
       }
       
       # result
-      x1_2lpmm = mean(mean_x1_2lpmm)
-      x1_pmm = mean(mean_x1_pmm)
-      x1_true = mean(data_raw$x1)
+      xsum_2lpmm = mean(mean_xsum_2lpmm)
+      xsum_pmm = mean(mean_xsum_pmm)
+      xsum_true = mean(data_raw$x_sum)
       
       return(list(
-        "x1_true" = x1_true,
-        "x1_2lpmm" = x1_2lpmm,
-        "x1_pmm" = x1_pmm,
-        "x1_2l_pctg" = (x1_2lpmm - x1_true) / x1_true * 100,
-        "x1_1l_pctg" = (x1_pmm - x1_true) / x1_true * 100,
+        "xsum_true" = xsum_true,
+        "xsum_2lpmm" = xsum_2lpmm,
+        "xsum_pmm" = xum_pmm,
+        "xsum_2l_pctg" = (xsum_2lpmm - xsum_true) / xsum_true * 100,
+        "xsum_1l_pctg" = (xsum_pmm - xsum_true) / xsum_true * 100,
         ".complex" = list(
           "data_raw" = data_raw,
           "data" = data
@@ -90,18 +90,18 @@ run_on_cluster(
   
   last = {
     # bias
-    bias_x1 = sim %>% SimEngine::summarize(
-      list(stat = "bias", estimate = "x1_2lpmm", truth = "x1_true", name = "bias_x1_2l"),
-      list(stat = "bias", estimate = "x1_pmm", truth = "x1_true", name = "bias_x1_1l"),
-      list(stat = "mse", estimate = "x1_2lpmm", truth = "x1_true", name = "mse_x1_2l"),
-      list(stat = "mse", estimate = "x1_pmm", truth = "x1_true", name = "mse_x1_1l")
+    bias_xsum = sim %>% SimEngine::summarize(
+      list(stat = "bias", estimate = "xsum_2lpmm", truth = "xsum_true", name = "bias_xsum_2l"),
+      list(stat = "bias", estimate = "xsum_pmm", truth = "xsum_true", name = "bias_xsum_1l"),
+      list(stat = "mse", estimate = "xsum_2lpmm", truth = "xsum_true", name = "mse_xsum_2l"),
+      list(stat = "mse", estimate = "xsum_pmm", truth = "xsum_true", name = "mse_xsum_1l")
       # list(stat = "coverage", lower = "2l_low", upper = "2l_up", truth = "x1_true", name = "cov_x1_2l"),
       # list(stat = "coverage", lower = "1l_low", upper = "1l_up", truth = "x1_true", name = "cov_x1_1l")
     )
     # bias percentage
-    bias_x1_pct = sim %>% SimEngine::summarize(
-      list(stat = "mean", x = "x1_2l_pctg", name = "bias_x1_2lpmm"),
-      list(stat = "mean", x = "x1_1l_pctg", name = "bias_x1_pmm")
+    bias_xsum_pct = sim %>% SimEngine::summarize(
+      list(stat = "mean", x = "xsum_2l_pctg", name = "bias_xsum_2lpmm"),
+      list(stat = "mean", x = "xsum_1l_pctg", name = "bias_xsum_pmm")
     )
   },
   

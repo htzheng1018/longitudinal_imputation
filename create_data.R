@@ -85,6 +85,7 @@ create_data = function(observation_num, start_year, time_type, time_params, beta
     beta_iv * data_raw$z1
   rsd = rnorm(nrow(data_raw), 0, 1)
   data_raw$y = data_raw$y + rsd
+  data_raw$x_sum = data_raw$x1 + data_raw$x2 + data_raw$x3
   
   # missing values
   data = introduce_missingness(data_raw, "MAR", "x1", 0.3)
@@ -92,6 +93,9 @@ create_data = function(observation_num, start_year, time_type, time_params, beta
   data = introduce_missingness(data, "MAR", "x3", 0.7)
   data = introduce_missingness(data, "MAR", "z1", 0.9)
   data = introduce_missingness(data, "MAR", "y", 0.8)
+  
+  # x_sum 
+  data$x_sum = data$x1 + data$x2 + data$x3
   
   return(list(data = data, raw = data_raw))
 }
