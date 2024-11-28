@@ -14,7 +14,7 @@ imp_pmm_sumscore = function(data, tv, iv, x_sum, m) {
   pred[tv, x_sum] = 0
   pred[iv, tv] = 0
   pred[x_sum, ] = 0
-  pred[y, tv] = 0
+  pred["y", tv] = 0
   
   meth = ini$meth
   meth[x_sum] = sprintf("~I(%s + %s + %s)", tv[1], tv[2], tv[3])
